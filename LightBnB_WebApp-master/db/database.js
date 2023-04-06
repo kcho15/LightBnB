@@ -75,6 +75,27 @@ const addUser = (user) => {
 //   return getAllProperties(null, 2);
 // };
 
+const getAllReservations = (guest_id, limit = 10) => {
+  return pool
+    .query(
+      `SELECT * FROM reservations 
+      JOIN properties ON reservations.property_id = properties.id 
+      WHERE reservations.guest_id = $1
+      GROUP BY properties.id, reservations.id 
+      ORDER BY reservations.start_date 
+      LIMIT $2;`, [guest_id, limit]
+    )
+    .then((res) => {
+    console.log('Reservations: ', res.rows)  
+        return res.rows; 
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
+}
+
+
+
 /// Properties
 
 const getAllProperties = (options, limit = 10) => {
@@ -107,7 +128,7 @@ module.exports = {
   getUserWithEmail,
   getUserWithId,
   addUser,
-  // getAllReservations,
+  getAllReservations,
   getAllProperties,
   // addProperty,
 };
