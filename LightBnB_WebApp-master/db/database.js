@@ -1,5 +1,3 @@
-const properties = require("./json/properties.json");
-const users = require("./json/users.json");
 const { Pool } = require('pg');
 const pool = new Pool({
   user: 'labber',
@@ -123,6 +121,8 @@ return pool.query(queryString, queryParams)
   .then((res) => res.rows);
 };
 
+// Add user created property
+
 const addProperty = (properties) => {
 
   return pool
@@ -186,7 +186,6 @@ const addProperty = (properties) => {
       console.log(err.message);
     });
 }
-
 
 module.exports = {
   getUserWithEmail,
