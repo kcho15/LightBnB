@@ -24,15 +24,6 @@ const getUserWithEmail = (email) => {
     });
 }; 
 
-// /**
-//  * Get a single user from the database given their id.
-//  * @param {string} id The id of the user.
-//  * @return {Promise<{}>} A promise to the user.
-//  */
-// const getUserWithId = function (id) {
-//   return Promise.resolve(users[id]);
-// };
-
 const getUserWithId = (id) => {
 
   return pool
@@ -55,7 +46,6 @@ const addUser = (user) => {
       'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *;', [user.name, user.email, user.password]
     )
     .then((res) => {
-      // console.log('results.row[0]', result.rows[0]);
       return res.rows[0]; 
     })
     .catch((err) => {
@@ -64,15 +54,6 @@ const addUser = (user) => {
 }; 
 
 /// Reservations
-
-// /**
-//  * Get all reservations for a single user.
-//  * @param {string} guest_id The id of the user.
-//  * @return {Promise<[{}]>} A promise to the reservations.
-//  */
-// const getAllReservations = function (guest_id, limit = 10) {
-//   return getAllProperties(null, 2);
-// };
 
 const getAllReservations = (guest_id, limit = 10) => {
   return pool
@@ -93,8 +74,6 @@ const getAllReservations = (guest_id, limit = 10) => {
     });
 }
 
-
-
 /// Properties
 
 const getAllProperties = (options, limit = 10) => {
@@ -109,10 +88,6 @@ const filters = [];
 if (options.owner_id) {
   queryParams.push(options.owner_id);
   filters.push(`owner_id = $${queryParams.length}`);
-
-  // queryString += `WHERE owner_id = $${queryParams.length}`;
-  // console.log('queryString, queryParams', queryString, queryParams);
-
 } 
 
 if (options.city) {
@@ -121,12 +96,15 @@ if (options.city) {
 }
 
 if (options.minimum_price_per_night > 0 && options.maximum_price_per_night > 0) {
-  queryParams.push(options.minimum_price_per_night);
-  queryParams.push(options.maximum_price_per_night);
+  queryParams.push(options.minimum_price_per_night * 100);
+  queryParams.push(options.maximum_price_per_night * 100);
   filters.push(`(cost_per_night >= $${queryParams.length - 1} AND cost_per_night <= $${queryParams.length})`);  
 }  
 
-
+if (options.minimum_rating > 0) {
+  queryParams.push(options.minimum_rating);
+  filters.push(`(SELECT AVG(property_reviews.rating) FROM property_reviews) >= $${queryParams.length}`);
+}
 
 if (filters.length > 0) {
   queryString += `WHERE ${filters.join(' AND ')}`; 
@@ -139,25 +117,76 @@ ORDER BY cost_per_night
 LIMIT $${queryParams.length};
 `;
 
-
 console.log({queryString, queryParams, options});
-
 
 return pool.query(queryString, queryParams)
   .then((res) => res.rows);
 };
 
-// /**
-//  * Add a property to the database
-//  * @param {{}} property An object containing all of the property details.
-//  * @return {Promise<{}>} A promise to the property.
-//  */
-// const addProperty = function (property) {
-//   const propertyId = Object.keys(properties).length + 1;
-//   property.id = propertyId;
-//   properties[propertyId] = property;
-//   return Promise.resolve(property);
-// };
+const addProperty = (properties) => {
+
+  return pool
+    .query(`INSERT INTO
+              properties
+                (
+                  owner_id,
+                  title,
+                  description,
+                  thumbnail_photo_url,
+                  cover_photo_url,
+                  cost_per_night, 
+                  street,
+                  city,
+                  province,
+                  post_code,
+                  country,
+                  parking_spaces,
+                  number_of_bathrooms,
+                  number_of_bedrooms
+                )
+            VALUES 
+              (
+                $1, 
+                $2, 
+                $3, 
+                $4, 
+                $5, 
+                $6, 
+                $7, 
+                $8, 
+                $9, 
+                $10, 
+                $11, 
+                $12, 
+                $13, 
+                $14
+              )
+            RETURNING *;`, 
+            [
+              properties.owner_id, 
+              properties.title, 
+              properties.description, 
+              properties.thumbnail_photo_url, 
+              properties.cover_photo_url, 
+              properties.cost_per_night,
+              properties.street, 
+              properties.city, 
+              properties.province, 
+              properties.post_code, 
+              properties.country, 
+              properties.parking_spaces, 
+              properties.number_of_bathrooms, 
+              properties.number_of_bedrooms
+            ]
+    )
+    .then((res) => {
+      return res.rows[0]; 
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
+}
+
 
 module.exports = {
   getUserWithEmail,
@@ -165,5 +194,5 @@ module.exports = {
   addUser,
   getAllReservations,
   getAllProperties,
-  // addProperty,
+  addProperty,
 };
