@@ -19,7 +19,7 @@ const getUserWithEmail = (email) => {
       console.log('successfully logged in!');
       return res.rows[0];
     })
-    .catch((err) => {
+    .catch((err) => { 
       console.log(err.message);
     });
 }; 
@@ -56,7 +56,6 @@ const addUser = (user) => {
     )
     .then((res) => {
       // console.log('results.row[0]', result.rows[0]);
-      console.log('RETURNING', res);
       return res.rows[0]; 
     })
     .catch((err) => {
@@ -99,18 +98,54 @@ const getAllReservations = (guest_id, limit = 10) => {
 /// Properties
 
 const getAllProperties = (options, limit = 10) => {
+const queryParams = [];
+let queryString = `
+SELECT properties.*, avg(property_reviews.rating) as average_rating
+FROM properties
+JOIN property_reviews ON properties.id = property_id
+`;
+const filters = []; 
 
- return pool
-    .query(
-      'SELECT * FROM properties LIMIT $1;', [limit])
-    .then((res) => {
-      return res.rows;
-    })
-    .catch((err) => {
-      console.log(err.message);
-    });
+if (options.owner_id) {
+  queryParams.push(options.owner_id);
+  filters.push(`owner_id = $${queryParams.length}`);
+
+  // queryString += `WHERE owner_id = $${queryParams.length}`;
+  // console.log('queryString, queryParams', queryString, queryParams);
+
+} 
+
+if (options.city) {
+  queryParams.push(`%${options.city}%`);
+  filters.push(`city LIKE $${queryParams.length}`);  
+}
+
+if (options.minimum_price_per_night > 0 && options.maximum_price_per_night > 0) {
+  queryParams.push(options.minimum_price_per_night);
+  queryParams.push(options.maximum_price_per_night);
+  filters.push(`(cost_per_night >= $${queryParams.length - 1} AND cost_per_night <= $${queryParams.length})`);  
+}  
+
+
+
+if (filters.length > 0) {
+  queryString += `WHERE ${filters.join(' AND ')}`; 
+}
+
+queryParams.push(limit);
+queryString += `
+GROUP BY properties.id
+ORDER BY cost_per_night
+LIMIT $${queryParams.length};
+`;
+
+
+console.log({queryString, queryParams, options});
+
+
+return pool.query(queryString, queryParams)
+  .then((res) => res.rows);
 };
-
 
 // /**
 //  * Add a property to the database
